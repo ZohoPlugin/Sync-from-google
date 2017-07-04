@@ -1,0 +1,58 @@
+GoogleContactsMap = map();
+contact_resp = zoho.crm.invokeConnector(("testprash.google.getcontacts"), GoogleContactsMap);
+crmcontacts = zoho.crm.getRecords("Contacts");
+googleIdList= Map();
+  for each cont in crmcontacts
+      {
+          googleIdList.put(cont.get("GoogleID"),cont.get("CONTACTID"));
+      }
+    if (contact_resp.get("status_code").contains("200"))
+    {
+        apiresponse = contact_resp.get("response");
+        feedJSONObj = apiresponse.getJSON("feed");
+        entryList = feedJSONObj.getJSON("entry").toJSONList();
+        for each entryID in entryList
+        {
+            tempmap = map();
+            emailList = entryID.getJSON("gd$email").toJSONList();
+            for each email in emailList
+            {
+                emailID = email.getJSON("address");
+                tempmap.put("Email", emailID);
+            }
+            nameList = entryID.getJSON("title").toJSONList();
+            for each name in nameList
+            {
+                nameID = name.getJSON("$t");
+                if (nameID  ==  "")
+                {
+                    tempmap.put("Last Name", "DefaultNAME");
+                }
+                else
+                {
+                    tempmap.put("Last Name", nameID);
+                }
+            }
+            idList = entryID.getJSON("id").toJSONList();
+            for each idS in idList
+            {
+                fullcontactId = idS.getJSON("$t");
+                contactId = fullcontactId.getSuffix("base/");
+                tempmap.put("GoogleID", contactId);
+                tempmap.put("Contact Source", "Google Contact SYNC");
+            }
+            if (crmcontacts.size()  ==  0)
+            {
+                Insert_resp = zoho.crm.create("Contacts", tempmap);
+                info " Insert Resp " + Insert_resp;
+            }
+                if (googleIdList.containKey(contactId))
+                {
+                   update_resp = zoho.crm.updateRecord("Contacts", googleIdList.get(contactId), tempmap);
+                }
+                else 
+                {
+                    Insert_resp = zoho.crm.create("Contacts", tempmap);
+                }
+        }
+    }
